@@ -27,8 +27,8 @@ def save_products(filename, product_list):
 
 def send_sms_alert(product):
     #Twilio account credentials
-    account_sid = 'ACc0a7e311ecad00781f3fcba403f1f1c2'
-    auth_token = '391cdd53a71be52e3ddda22fa900019d'
+    account_sid = 'deprecated'
+    auth_token = 'deprecated'
     twilio_phone_number=18664225176
     recipient_phone_number=16189722486
 
