@@ -2,6 +2,7 @@ import requests
 import json
 import time
 import sys
+import os
 from twilio.rest import Client
 from bs4 import BeautifulSoup
 
@@ -27,8 +28,8 @@ def save_products(filename, product_list):
 
 def send_sms_alert(product):
     #Twilio account credentials
-    account_sid = 'deprecated'
-    auth_token = 'deprecated'
+    account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
     twilio_phone_number=18664225176
     recipient_phone_number=16189722486
 
