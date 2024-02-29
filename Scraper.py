@@ -3,84 +3,84 @@ import json
 import time
 import sys
 import os
-import aiosmtpd
+import smtplib
+import asyncio
+import aiofiles
+import aiohttp
 from email.message import EmailMessage
-from twilio.rest import Client
+# from twilio.rest import Client
 from bs4 import BeautifulSoup
 
 
+async def scrape_site(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            html = await response.text()
+            soup = BeautifulSoup(html, 'html.parser')
+            product_elements = soup.find_all(class_='boost-pfs-filter-product-item-title')
+            products = [element.text.strip() for element in product_elements]
+            return products
 
-def scrape_website(url):
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    product_elements = soup.find_all(class_='boost-pfs-filter-product-item-title')
-    products = [element.text.strip() for element in product_elements]
-    return products
-
-def load_product_list(filename):
+async def load_prod_list(filename):
     try:
-        with open(filename, 'r') as file:
-            return json.load(file)
-    except (FileNotFoundError, json.JSONDecodeError):
+        async with aiofiles.open(filename, 'r') as file:
+            content = await file.read()
+            return json.loads(content)
+    except(FileNotFoundError, json.JSONDecodeError):
         return []
 
-def save_products(filename, product_list):
-    with open(filename, 'w') as file:
-        json.dump(product_list, file)
+async def save_prod(filename, product_list):
+    async with aiofiles.open(filename, 'w') as file:
+        await file.write(json.dumps(product_list))
 
-def send_sms_alert(product):
-    #Twilio account credentials
-    account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
-    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
-    twilio_phone_number=18664225176
-    recipient_phone_number=16189722486
-
-    client = Client(account_sid, auth_token)
-
-    message = client.messages.create(
-        body=f'F**kface Merch Spotted: {product}',
-        from_=twilio_phone_number,
-        to=recipient_phone_number
-    )
-
-    print(f'SMS alert sent: {message.sid}')
-
-async def email_alert(product):
+async def email_alert(products):
     msg = EmailMessage()
-    msg.set_content(f'F**kface Merch Spotted: {product}')
+    msg.set_content(f'F**kface Merch Spotted: {products}')
     msg['subject'] = 'FF Merch Alert'
+    msg['from'] = os.environ.get('FFEMAIL')
     msg['to'] = os.environ.get('PHONEEMAIL')
 
     user = os.environ.get('FFEMAIL')
-    password = os.environ.get('FFPASSWORD')
+    password = os.environ.get('AppPasswordSpeckTest')
 
-    server = aiosmtpd.asyncio
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(user,password)
+    server.send_message(msg)
+    print(f'Email to SMS message sent: {msg.get_payload}')
+    server.quit()
 
-
-if __name__ == "__main__":
-    
+async def main():
     filename = 'product-list.json'
     website_url = 'https://store.roosterteeth.com/collections/f-kface'    
     
     #load initial products
-    initial_products = load_product_list(filename)
+    initial_products = await load_prod_list(filename)
 
     while True:
         #Rescrape website
-        current_products = scrape_website(website_url)
-
+        current_products = await scrape_site(website_url)
+        new_prod_list = []
         for product in current_products:
             if product not in initial_products:
-                send_sms_alert(product)
+                #Switching to email
+                #send_sms_alert(product)
+                #await email_alert(product)
+                new_prod_list.append(product)
+        if new_prod_list != []:
+            await email_alert(new_prod_list)
+                
         #Save the new product list, rewriting removes deleted items
-        save_products(filename, current_products)
+        await save_prod(filename, current_products)
         initial_products = current_products  
         for product in current_products:
             print(product)
             sys.stdout.flush()
         
-        time.sleep(30)   
+        await asyncio.sleep(3600)
 
 
+if __name__ == "__main__":
+    asyncio.run(main())
 
   
