@@ -3,6 +3,8 @@ import json
 import time
 import sys
 import os
+import aiosmtpd
+from email.message import EmailMessage
 from twilio.rest import Client
 from bs4 import BeautifulSoup
 
@@ -42,6 +44,17 @@ def send_sms_alert(product):
     )
 
     print(f'SMS alert sent: {message.sid}')
+
+async def email_alert(product):
+    msg = EmailMessage()
+    msg.set_content(f'F**kface Merch Spotted: {product}')
+    msg['subject'] = 'FF Merch Alert'
+    msg['to'] = os.environ.get('PHONEEMAIL')
+
+    user = os.environ.get('FFEMAIL')
+    password = os.environ.get('FFPASSWORD')
+
+    server = aiosmtpd.asyncio
 
 
 if __name__ == "__main__":
